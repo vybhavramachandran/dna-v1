@@ -44,6 +44,7 @@ class ContactDetector(contactListener):
                 if contact.fixtureA.body.userData == "RPOL2":
                     self.env.mRNA += contact.fixtureB.body.userData
                     self.env.reward = 100/((len(self.env.templateDNAStrand)+1)-len(self.env.mRNA))
+                    self.env.energy +=100
                     print ("Environment is ",self.env.templateDNAStrand)
                     print("Nucleotide transcription reward is ", self.env.reward)
                 else:
@@ -51,6 +52,7 @@ class ContactDetector(contactListener):
                     self.env.mRNA += contact.fixtureA.body.userData
                     print ("Environment is ",self.env.templateDNAStrand)
                     print ("mRNA is ",self.env.mRNA)
+                    self.env.energy +=100
                     self.env.reward = 100/((len(self.env.templateDNAStrand)+1)-len(self.env.mRNA))
                     print("Nucleotide transcription reward is ",self.env.reward)
 
@@ -82,7 +84,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
         self.viewer = None
 
         self.observation_space = spaces.Box(-np.inf,
-                                            np.inf, shape=(4,), dtype=np.float32)
+                                            np.inf, shape=(5,), dtype=np.float32)
 
         self.atpConsumed = 0
 
@@ -287,48 +289,56 @@ class DnaEnv(gym.Env, utils.EzPickle):
         #     print("Placeholder for action 5")
 
         self.world.Step(1.0/self.FPS, 6*30, 2*30)
+        self.energy -=1
+        print(self.energy)
+
+        
+
         pos = self.rnaPolymerase.position
         # print(type(pos.x))
         # vel = self.rnaPolymerase.linearVelocity
 
-        state = [pos.x, pos.y, self.renderedBases[len(
+        state = [pos.x, pos.y, self.energy, self.renderedBases[len(
             self.mRNA)].position.x, self.renderedBases[len(self.mRNA)].position.y]
        # print("Length of state vector", len(state))
-        if len(self.mRNA) <= len(self.templateDNAStrand):
-            if re.findall("^"+self.mRNA, self.templateDNAStrand) != []:
-                #fullmatch
-                if re.findall("^"+self.mRNA+"$", self.templateDNAStrand) != []:
-                    print("Finished")
-                    done = True
-                    self.reward = 100
-                #Starting transcribing but hasn't finished
+        if self.energy>0:
+            if len(self.mRNA) <= len(self.templateDNAStrand):
+                if re.findall("^"+self.mRNA, self.templateDNAStrand) != []:
+                    #fullmatch
+                    if re.findall("^"+self.mRNA+"$", self.templateDNAStrand) != []:
+                        print("Finished")
+                        done = True
+                        self.reward = 100
+                    #Starting transcribing but hasn't finished
 
-                #has not started transcribing
-                else:
-                    currentNucleoTideToAttachTo = self.renderedBases[len(
-                        self.mRNA)]
-                    distance = self.getDistance(
-                        currentNucleoTideToAttachTo, self.rnaPolymerase)
-                    print(distance)
-                    #print(self.mRNA, self.templateDNAStrand, distance)
-                    #self.current_reward = -100*distance
-                    #self.reward = self.current_reward - self.prev_reward
-                    if distance < self.prev_distance:
-                        self.reward = (100-distance)/100
-                    elif distance == self.prev_distance:
-                        self.reward = 0
+                    #has not started transcribing
                     else:
-                        self.reward = -1 * (distance/100)
+                        currentNucleoTideToAttachTo = self.renderedBases[len(
+                            self.mRNA)]
+                        distance = self.getDistance(
+                            currentNucleoTideToAttachTo, self.rnaPolymerase)
+                        print(distance)
+                        #print(self.mRNA, self.templateDNAStrand, distance)
+                        #self.current_reward = -100*distance
+                        #self.reward = self.current_reward - self.prev_reward
+                        if distance < self.prev_distance:
+                            self.reward = (100-distance)/100
+                        elif distance == self.prev_distance:
+                            self.reward = 0
+                        else:
+                            self.reward = -1 * (distance/100)
 
-                    self.prev_distance = distance
-                    print(self.reward)
-                    done = False
+                        self.prev_distance = distance
+                        print(self.reward)
+                        done = False
+                else:
+                    done = True
+                    self.game_over = True
+
             else:
                 done = True
                 self.game_over = True
-
         else:
-            done = True
             self.game_over = True
 
         if self.game_over:
@@ -355,6 +365,8 @@ class DnaEnv(gym.Env, utils.EzPickle):
         self.mRNA = ""
         self.reward = 0
         self.templateDNAStrand = "CAG"
+
+        self.energy = 500
 
         self.atpConsumed = 0
         # Create the list of nucleotides
