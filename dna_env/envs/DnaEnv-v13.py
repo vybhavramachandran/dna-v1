@@ -265,22 +265,22 @@ class DnaEnv(gym.Env, utils.EzPickle):
         # handle action : Move UP (1)
         if action == 1:
             self.rnaPolymerase.ApplyLinearImpulse(
-                (0, 15), self.rnaPolymerase.worldCenter, True)
+                (0, 50), self.rnaPolymerase.worldCenter, True)
 
         # handle action : Move DOWN (2)
         if action == 2:
             self.rnaPolymerase.ApplyLinearImpulse(
-                (0, -15), self.rnaPolymerase.worldCenter, True)
+                (0, -50), self.rnaPolymerase.worldCenter, True)
 
         # handle action : Move Left (3)
         if action == 3:
             self.rnaPolymerase.ApplyLinearImpulse(
-                (-15, 0), self.rnaPolymerase.worldCenter, True)
+                (-50, 0), self.rnaPolymerase.worldCenter, True)
 
         # handle action : Move Right (4)
         if action == 4:
             self.rnaPolymerase.ApplyLinearImpulse(
-                (15, 0), self.rnaPolymerase.worldCenter, True)
+                (50, 0), self.rnaPolymerase.worldCenter, True)
 
         # handle action : Transcribe (5)
         # if action == 5:
@@ -293,7 +293,6 @@ class DnaEnv(gym.Env, utils.EzPickle):
 
         state = [pos.x, pos.y, self.renderedBases[len(
             self.mRNA)].position.x, self.renderedBases[len(self.mRNA)].position.y]
-
        # print("Length of state vector", len(state))
         if len(self.mRNA) <= len(self.templateDNAStrand):
             if re.findall("^"+self.mRNA, self.templateDNAStrand) != []:
@@ -310,7 +309,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
                         self.mRNA)]
                     distance = self.getDistance(
                         currentNucleoTideToAttachTo, self.rnaPolymerase)
-                    #print(distance)
+                    print(distance)
                     #print(self.mRNA, self.templateDNAStrand, distance)
                     #self.current_reward = -100*distance
                     #self.reward = self.current_reward - self.prev_reward
@@ -322,7 +321,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
                         self.reward = -1 * (distance/100)
 
                     self.prev_distance = distance
-                    #print(self.reward)
+                    print(self.reward)
                     done = False
             else:
                 done = True
