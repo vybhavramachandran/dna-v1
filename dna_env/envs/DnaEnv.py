@@ -82,7 +82,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
         self.viewer = None
 
         self.observation_space = spaces.Box(-np.inf,
-                                            np.inf, shape=(4,), dtype=np.float32)
+                                            np.inf, shape=(5,), dtype=np.float32)
 
         self.atpConsumed = 0
 
@@ -292,7 +292,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
         # vel = self.rnaPolymerase.linearVelocity
 
         state = [pos.x, pos.y, self.renderedBases[len(
-            self.mRNA)].position.x, self.renderedBases[len(self.mRNA)].position.y]
+            self.mRNA)].position.x, self.renderedBases[len(self.mRNA)].position.y,0.0]
 
        # print("Length of state vector", len(state))
         if len(self.mRNA) <= len(self.templateDNAStrand):
@@ -310,6 +310,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
                         self.mRNA)]
                     distance = self.getDistance(
                         currentNucleoTideToAttachTo, self.rnaPolymerase)
+                    state[4]=distance
                     #print(distance)
                     #print(self.mRNA, self.templateDNAStrand, distance)
                     #self.current_reward = -100*distance
@@ -335,7 +336,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
         if self.game_over:
             done = True
             self.reward = -100
-
+        print(state)
         return np.array(state, dtype=np.float32), self.reward, done, {}
 
     def reset(self):
