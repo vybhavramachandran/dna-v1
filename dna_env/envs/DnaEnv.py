@@ -82,7 +82,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
         self.viewer = None
 
         self.observation_space = spaces.Box(-np.inf,
-                                            np.inf, shape=(7,), dtype=np.float32)
+                                            np.inf, shape=(11,), dtype=np.float32)
 
         self.atpConsumed = 0
 
@@ -254,6 +254,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
         xDistanceSquared = (body2.position.x - body1.position.x)**2
         yDistanceSquared = (body2.position.y - body1.position.y)**2
         return np.sqrt(xDistanceSquared+yDistanceSquared)
+    
 
     def step(self, action):
         # test
@@ -292,7 +293,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
         vel = self.rnaPolymerase.linearVelocity
 
         state = [pos.x, pos.y, self.renderedBases[len(
-           self.mRNA)].position.x, self.renderedBases[len(self.mRNA)].position.y,0.0,vel.x,vel.y]
+           self.mRNA)].position.x, self.renderedBases[len(self.mRNA)].position.y,0.0,vel.x,vel.y,0.0,0.0,0.0,0.0]
         
         #state = [0.0]
 
@@ -314,6 +315,20 @@ class DnaEnv(gym.Env, utils.EzPickle):
                     distance = self.getDistance(
                         currentNucleoTideToAttachTo, self.rnaPolymerase)
                     state[4]=distance
+
+                    #distance from top border
+                    state[7]=self.nucleusTopBorderBody.position.y - self.rnaPolymerase.position.y
+
+                    #distance from bottom border
+                    state[8]=self.rnaPolymerase.position.y - self.nucleusBottomBorderBody.position.y
+
+                    #distance from left border
+                    state[9]=self.rnaPolymerase.position.x - self.nucleusLeftBorderBody.position.x
+
+                    #distance from right border
+                    state[10]= self.nucleusRightBorderBody.position.x - self.rnaPolymerase.position.x
+
+
                     #print(distance)
                     #print(self.mRNA, self.templateDNAStrand, distance)
                     #self.current_reward = -100*distance

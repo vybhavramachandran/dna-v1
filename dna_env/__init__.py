@@ -3,7 +3,7 @@ from gym.envs.registration import register
 
 
 register(
-    id='dna-v19',
+    id='dna-v20',
     entry_point='dna_env.envs:DnaEnv',
     # reward_threshold=-100.0,
     # nondeterministic = True,
