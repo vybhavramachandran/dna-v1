@@ -375,7 +375,7 @@ class DnaEnv(gym.Env, utils.EzPickle):
         self.game_over = False
         self.mRNA = ""
         self.reward = 0
-        self.templateDNAStrand = "C"
+        self.templateDNAStrand = "CAG"
 
         self.atpConsumed = 0
         # Create the list of nucleotides
