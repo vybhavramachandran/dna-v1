@@ -8,7 +8,6 @@ import numpy as np
 import gym
 import random
 from gym import error, spaces
-from gym import GoalEnv
 from gym import utils
 from gym.utils import seeding, EzPickle
 #import Box2D.examples.simple.rendering as rendering
@@ -18,7 +17,6 @@ from Box2D.b2 import (world, polygonShape, staticBody,
 import re
 import pyglet
 from pyglet import gl
-from collections import OrderedDict
 
 
 class ContactDetector(contactListener):
@@ -41,23 +39,20 @@ class ContactDetector(contactListener):
                 contact.fixtureA.body.userData, contact.fixtureB.body.userData))
             if self.isItHittingTheWall(contact.fixtureA.body, contact.fixtureB.body) == True:
                 self.env.game_over = True
-                self.env.current_goal = 1
 
             else:
                 if contact.fixtureA.body.userData == "RPOL2":
                     self.env.mRNA += contact.fixtureB.body.userData
-                   #self.env.reward = 100/((len(self.env.templateDNAStrand)+1)-len(self.env.mRNA))
+                    self.env.reward = 100/((len(self.env.templateDNAStrand)+1)-len(self.env.mRNA))
                     print ("Environment is ",self.env.templateDNAStrand)
                     print("Nucleotide transcription reward is ", self.env.reward)
-                    self.env.current_goal = 2
                 else:
                     
                     self.env.mRNA += contact.fixtureA.body.userData
                     print ("Environment is ",self.env.templateDNAStrand)
                     print ("mRNA is ",self.env.mRNA)
-                   # self.env.reward = 100/((len(self.env.templateDNAStrand)+1)-len(self.env.mRNA))
+                    self.env.reward = 100/((len(self.env.templateDNAStrand)+1)-len(self.env.mRNA))
                     print("Nucleotide transcription reward is ",self.env.reward)
-                    self.env.current_goal = 2
 
     def EndContact(self, contact):
         # if RPOL breaks contact with one Nucleotide
@@ -66,7 +61,7 @@ class ContactDetector(contactListener):
             contact.fixtureA.body.userData, contact.fixtureB.body.userData))
 
 
-class DnaEnv(GoalEnv, utils.EzPickle):
+class DnaEnv(gym.Env, utils.EzPickle):
     metadata = {'render.modes': ['human']}
 
     def __init__(self):
@@ -86,17 +81,8 @@ class DnaEnv(GoalEnv, utils.EzPickle):
 
         self.viewer = None
 
-        # self.observation_space = spaces.Box(-np.inf,
-        #                                     np.inf, shape=(11,), dtype=np.float32)
-
-        self.observation_space = spaces.Dict({
-                'observation': spaces.Box(-np.inf,np.inf, shape=(4,), dtype=np.float32),
-                'achieved_goal': spaces.Discrete(3),
-                'desired_goal': spaces.Discrete(3)
-            })
-        #3 goals : floating + wall + nucleotides (C)
-
-        self.current_goal = 0
+        self.observation_space = spaces.Box(-np.inf,
+                                            np.inf, shape=(11,), dtype=np.float32)
 
         self.atpConsumed = 0
 
@@ -124,7 +110,6 @@ class DnaEnv(GoalEnv, utils.EzPickle):
             "C": (127, 0, 127),
             "RPOL2": (127, 0, 127)
         }
-        
 
         self.reset()
 
@@ -137,17 +122,6 @@ class DnaEnv(GoalEnv, utils.EzPickle):
         if self.viewer is not None:
             self.viewer.close()
             self.viewer = None
-
-    def get_obs(self,state,achieved_goal,desired_goal):
-        """
-        Helper to create the observation.
-        :return: (OrderedDict<int or ndarray>)
-        """
-        return OrderedDict([
-            ('observation', state),
-            ('achieved_goal', achieved_goal),
-            ('desired_goal', desired_goal)
-        ])
 
     def createNucleus(self):
         # self.nucleusBody = self.world.CreateStaticBody(
@@ -319,34 +293,56 @@ class DnaEnv(GoalEnv, utils.EzPickle):
         vel = self.rnaPolymerase.linearVelocity
 
         state = [pos.x, pos.y, self.renderedBases[len(
-           self.mRNA)].position.x, self.renderedBases[len(self.mRNA)].position.y]
+           self.mRNA)].position.x, self.renderedBases[len(self.mRNA)].position.y,0.0,vel.x,vel.y,0.0,0.0,0.0,0.0]
         
         #state = [0.0]
-        
-        
+
 
        # print("Length of state vector", len(state))
-        print("Current achieved goal is ",self.current_goal)
-        reward = self.compute_reward(self.current_goal,2,None)
-        print("Current achieved reward is ",reward)
-
         if len(self.mRNA) <= len(self.templateDNAStrand):
             if re.findall("^"+self.mRNA, self.templateDNAStrand) != []:
                 #fullmatch
                 if re.findall("^"+self.mRNA+"$", self.templateDNAStrand) != []:
                     print("Finished")
                     done = True
-                    obs = self.get_obs(state,2,2)
-                    # reward = self.compute_reward(5,5)
+                    self.reward = 100
                 #Starting transcribing but hasn't finished
+
                 #has not started transcribing
                 else:
                     currentNucleoTideToAttachTo = self.renderedBases[len(
                         self.mRNA)]
-                    
+                    distance = self.getDistance(
+                        currentNucleoTideToAttachTo, self.rnaPolymerase)
+                    state[4]=distance
+
+                    #distance from top border
+                    state[7]=self.nucleusTopBorderBody.position.y - self.rnaPolymerase.position.y
+
+                    #distance from bottom border
+                    state[8]=self.rnaPolymerase.position.y - self.nucleusBottomBorderBody.position.y
+
+                    #distance from left border
+                    state[9]=self.rnaPolymerase.position.x - self.nucleusLeftBorderBody.position.x
+
+                    #distance from right border
+                    state[10]= self.nucleusRightBorderBody.position.x - self.rnaPolymerase.position.x
+
+
+                    #print(distance)
+                    #print(self.mRNA, self.templateDNAStrand, distance)
+                    #self.current_reward = -100*distance
+                    #self.reward = self.current_reward - self.prev_reward
+                    if distance < self.prev_distance:
+                        self.reward = (100-distance)/100
+                    elif distance == self.prev_distance:
+                        self.reward = 0
+                    else:
+                        self.reward = -1 * (distance/100)
+
+                    self.prev_distance = distance
                     #print(self.reward)
                     done = False
-                    obs = self.get_obs(state,5,5)
             else:
                 done = True
                 self.game_over = True
@@ -354,16 +350,13 @@ class DnaEnv(GoalEnv, utils.EzPickle):
         else:
             done = True
             self.game_over = True
-        
+
         if self.game_over:
             done = True
-            # state[4]=100.0
-            # self.reward = -100
+            state[4]=100.0
+            self.reward = -100
         print(state)
         return np.array(state, dtype=np.float32), self.reward, done, {}
-
-    def compute_reward(self, achieved_goal, desired_goal,info):
-        return 0.0 if achieved_goal == desired_goal else -1.0
 
     def reset(self):
         self._destroy()
@@ -380,10 +373,9 @@ class DnaEnv(GoalEnv, utils.EzPickle):
         self.prev_distance = 0.0
         # self.createNucleus()
         self.game_over = False
-        self.current_goal = 0
         self.mRNA = ""
         self.reward = 0
-        self.templateDNAStrand = "C"
+        self.templateDNAStrand = "CAGCAGCAGCAG"
 
         self.atpConsumed = 0
         # Create the list of nucleotides
